@@ -1,0 +1,90 @@
+# Pipeline Configuration for FlowExtract
+
+# Paths
+paths:
+  input_dir: "data/input/images/test"  # Test set images only
+  intermediate_dir: "data/intermediate"  # Stage-by-stage results
+  output_dir: "data/output"              # Final predictions only
+  annotations_dir: "data/input/final_annotations"  # Ground truth for evaluation
+
+# Stage 1: Element Detection (YOLO-based)
+detection:
+  yolo:
+    model_path: "runs/detect/train/weights/best.pt"
+    confidence_threshold: 0.25
+    iou_threshold: 0.4
+
+# YOLO Training Configuration
+training:
+  yolo:
+    # Pretrained weights
+    use_pretrained: true  # true = COCO pretrained, false = vanilla YOLO
+    pretrained_model: "yolov8s.pt"  # COCO pretrained weights
+    
+    # Training parameters
+    epochs: 250
+    batch_size: 8
+    image_size: 640
+    patience: 50
+    device: "mps"  # Options: "cpu", "cuda", "mps" (Apple Silicon)
+
+    # Optimization
+    lr0: 0.01          # Initial learning rate
+    cos_lr: true       # Cosine annealing learning-rate schedule
+    
+    # Augmentation strategy (conservative for tight bounding boxes)
+    augmentation:
+      # Color augmentation (brightness only - simulates scan conditions)
+      hsv_h: 0.0        # No hue shift
+      hsv_s: 0.0        # No saturation change
+      hsv_v: 0.3        # Brightness variation (±30%)
+      
+      # Mosaic (critical for small dataset - 4x effective size)
+      mosaic: 1.0       # Always enabled
+      
+      # Geometric transforms (all disabled to protect tight bounding boxes)
+      degrees: 0.0      # No rotation (clips corners)
+      translate: 0.0    # No translation (clips boundaries)
+      scale: 0.0        # No scaling (crops features)
+      shear: 0.0        # No shearing
+      perspective: 0.0  # No perspective transform
+      flipud: 0.0       # No vertical flip (inverts text)
+      fliplr: 0.0       # No horizontal flip (reverses flow + mirrors text)
+      mixup: 0.0        # No mixup
+      copy_paste: 0.0   # No copy-paste
+
+# Stage 2: OCR
+ocr:
+  engine: "easyocr"  # Options: "paddleocr" or "easyocr"
+  language: "nl"  # Dutch
+  use_gpu: true
+  preserve_line_breaks: true
+  confidence_threshold: 0.25
+
+# Stage 3: Connection Derivation
+arrows:
+  # Line detection parameters
+  line_detection:
+    hough_threshold: 30        # Hough accumulator threshold (lower = more sensitive)
+    min_line_length: 15        # Minimum line length in pixels
+    max_line_gap: 25           # Maximum gap between collinear segments
+
+  # Connection matching parameters
+  line_attachment_threshold: 20   # Distance for line-arrow attachment
+  target_touch_threshold: 30      # Distance for arrow-box touching
+  source_trace_threshold: 40      # Distance for source tracing
+  junction_detection_threshold: 15 # Distance to detect line junctions
+  
+  # Label assignment parameters (ja/nee on arrows)
+  label_assignment:
+    single_arrow_radius: 100      # Search radius for single arrows (pixels)
+    branching_radius: 150         # Search radius for branching decisions (pixels)
+    distance_penalty_factor: 50.0 # Normalization factor for distance penalty
+
+# Evaluation
+evaluation:
+  # A predicted element is a true positive when its bounding box overlaps a
+  # ground-truth element with IoU > 0.5 and the predicted class matches.
+  iou_threshold: 0.5
+  # An edge is correct when both endpoints match ground-truth nodes (IoU > 0.5)
+  # and the edge direction agrees.

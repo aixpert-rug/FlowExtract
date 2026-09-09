@@ -1,0 +1,20 @@
+# Core dependencies
+numpy>=1.24.0
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# Object Detection (YOLO)
+ultralytics>=8.0.0
+
+# OCR Engines
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0
+easyocr>=1.7.0  # Alternative to PaddleOCR
+
+# Utilities
+pyyaml>=6.0
+tqdm>=4.65.0
+matplotlib>=3.7.0
+
+# Data handling
+pandas>=2.0.0
